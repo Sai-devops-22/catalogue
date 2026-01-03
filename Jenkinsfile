@@ -5,6 +5,7 @@ pipeline {
 
     environment {
         COURSE = "jenkins"
+        appVersion = ""
     }
     options {
         timeout(time: 30, unit: "MINUTES")          
@@ -13,9 +14,12 @@ pipeline {
     stages {
         stage("Build") {
             steps {
-                sh """
-                    echo "hello world"
-                """
+                script{
+                    sh """
+                        echo "hello world"
+                    """
+                }
+
             }
         }
         stage ("Test") {
@@ -23,9 +27,13 @@ pipeline {
                 echo "Testing..."
             }
         }
-        stage ("Deploy") {
+        stage ("Reading Json file") {
             steps {
-                echo "Deploying"
+                script {
+                    def packageJson = readJSONfile:"package.json"
+                    appVersion = packageJson.version
+                    echo ${appVersion}
+                }
             }
         }
     }
