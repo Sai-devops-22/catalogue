@@ -7,9 +7,9 @@ pipeline {
         COURSE = "jenkins"
         appVersion = ""
         region = "us-east-1"
-        acc_id = "911893329385"
-        project = "roboshop"
-        component = "catalogue"
+        ACC_ID = "911893329385"
+        PROJECT = "roboshop"
+        COMPONENT = "catalogue"
     }
     options {
         timeout(time: 30, unit: "MINUTES")          
@@ -51,9 +51,9 @@ pipeline {
             steps {
                 withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                     sh """
-                        aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${acc_id}.dkr.ecr.us-east-1.amazonaws.com
-                        docker build -t ${acc_id}.dkr.ecr.us-east-1.amazonaws.com/${project}/${component}:${appVersion} .
-                        docker push ${acc_id}.dkr.ecr.us-east-1.amazonaws.com/${project}/${component}:${appVersion}
+                        aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
+                        docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
+                        docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
                     """
                 }
             }     
