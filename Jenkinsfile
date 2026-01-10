@@ -11,74 +11,76 @@ pipeline {
         PROJECT = "roboshop"
         COMPONENT = "catalogue"
     }
+
     options {
-        timeout(time: 30, unit: "MINUTES")          
+        timeout(time: 30, unit: "MINUTES")
         disableConcurrentBuilds()
-        ansiColor('xterm')     
+        ansiColor('xterm')
     }
+
     parameters {
-        booleanParam(name: "deploy", defaultValue: false, description:"CHECK")
+        booleanParam(name: "deploy", defaultValue: false, description: "CHECK")
     }
+
     stages {
         stage("Build") {
             steps {
-                script{
-                    sh """
-                        echo "hello world"
-                    """
-                }
-
+                sh 'echo "hello world"'
             }
         }
-        stage ("Test") {
+
+        stage("Test") {
             steps {
                 echo "Testing..."
             }
         }
-        stage ("Reading Json file") {
+
+        stage("Reading Json file") {
             steps {
                 script {
-                    def packageJson = readJSON file:"package.json"
+                    def packageJson = readJSON file: "package.json"
                     appVersion = packageJson.version
                     echo "${appVersion}"
                 }
             }
         }
-        stage("installing dependencies") {
+
+        stage("Installing dependencies") {
             steps {
-                sh """
-                    npm install
-                """
+                sh 'npm install'
             }
         }
-        stage("Docker BUild") {
+
+        stage("Docker Build") {
             steps {
                 withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                     sh """
-                        aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
-                        docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
-                        docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
+                        aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com
+                        docker build -t ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
+                        docker push ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
                     """
                 }
-            }     
+            }
         }
+
         stage("Trigger Build") {
             when {
-                expression {params.deploy}  
-            }            
+                expression { params.deploy }
+            }
             steps {
                 script {
-                    build job: "catalogue-cd"
-                    parameters: [
-                        string(name: "appVersion",value: "${appVersion}"),
-                        string(name: "deploy_to", value: "dev")
-                    ],
-                    propagate: false,
-                    wait: false
+                    build job: "catalogue-cd",
+                        parameters: [
+                            string(name: "appVersion", value: "${appVersion}"),
+                            string(name: "deploy_to", value: "dev")
+                        ],
+                        propagate: false,
+                        wait: false
                 }
             }
         }
     }
+
     post {
         always {
             echo "hello from always"
@@ -91,8 +93,4 @@ pipeline {
             echo "hello from failure"
         }
     }
-
 }
-
-
-
