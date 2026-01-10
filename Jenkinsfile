@@ -15,6 +15,9 @@ pipeline {
         timeout(time: 30, unit: "MINUTES")          
         disableConcurrentBuilds()       
     }
+    parameters {
+        booleanParam(name: "deploy", defaultValue: false, description:"CHECK")
+    }
     stages {
         stage("Build") {
             steps {
@@ -58,6 +61,22 @@ pipeline {
                 }
             }     
         }
+        stage("Trigger Build") {
+            steps {
+                when {
+                  expression {params.deploy}  
+                }
+                script {
+                    build job: "catalogue-cd"
+                    parameters: [
+                        string(name: "appVersion",defaultValue: "${appVersion}"),
+                        string(name: "deploy_to", defaultValue: "dev")
+                    ],
+                    propagate: false
+                    wait: false
+                }
+            }
+        }
         stage ("Deploy") {
             steps {
                 echo "Deploying..."    
@@ -76,6 +95,7 @@ pipeline {
             echo "hello from failure"
         }
     }
+
 }
 
 
