@@ -14,7 +14,7 @@ pipeline {
     options {
         timeout(time: 30, unit: "MINUTES")          
         disableConcurrentBuilds()
-        ansiColo()       
+        ansiColor('xterm')     
     }
     parameters {
         booleanParam(name: "deploy", defaultValue: false, description:"CHECK")
@@ -53,9 +53,9 @@ pipeline {
         }
         stage("Docker BUild") {
             steps {
-                withAWS(credentials: 'aws-creds', REGION: 'us-east-1') {
+                withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                     sh """
-                        aws ecr get-login-password --REGION ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
+                        aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com
                         docker build -t ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
                         docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
                     """
@@ -63,17 +63,17 @@ pipeline {
             }     
         }
         stage("Trigger Build") {
+            when {
+                expression {params.deploy}  
+            }            
             steps {
-                when {
-                  expression {params.deploy}  
-                }
                 script {
                     build job: "catalogue-cd"
                     parameters: [
-                        string(name: "appVersion",defaultValue: "${appVersion}"),
-                        string(name: "deploy_to", defaultValue: "dev")
+                        string(name: "appVersion",value: "${appVersion}"),
+                        string(name: "deploy_to", value: "dev")
                     ],
-                    propagate: false
+                    propagate: false,
                     wait: false
                 }
             }
