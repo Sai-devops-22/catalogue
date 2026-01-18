@@ -1,0 +1,115 @@
+pipeline {
+    agent {
+        label "AGENT-1"
+    }
+
+    environment {
+        COURSE = "jenkins"
+        appVersion = ""
+        REGION = "us-east-1"
+        ACC_ID = "911893329385"
+        PROJECT = "roboshop"
+        COMPONENT = "catalogue"
+    }
+
+    options {
+        timeout(time: 30, unit: "MINUTES")
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        booleanParam(name: "deploy", defaultValue: false, description: "CHECK")
+    }
+
+    stages {
+        stage("Build") {
+            steps {
+                sh 'echo "hello world"'
+            }
+        }
+
+        stage("Test") {
+            steps {
+                echo "Testing..."
+            }
+        }
+
+        stage("Reading Json file") {
+            steps {
+                script {
+                    def packageJson = readJSON file: "package.json"
+                    appVersion = packageJson.version
+                    echo "${appVersion}"
+                }
+            }
+        }
+
+        stage("Installing dependencies") {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage("sonnar qube"){
+            environment{
+                scannerHome = tool "sonar-7.2"
+            }
+            steps{
+                script
+                    withScannerQubeEnv(installationName: "sonar-7.2"){
+                        sh "${scannerHome}/bin/sonar-scanner"
+                }
+            }
+        }
+
+        // Enable webhook in sonarqube server and wait for results
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                waitForQualityGate abortPipeline: true }
+            }
+        } 
+
+        stage("Docker Build") {
+            steps {
+                withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    sh """
+                        aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com
+                        docker build -t ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion} .
+                        docker push ${ACC_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}/${COMPONENT}:${appVersion}
+                    """
+                }
+            }
+        }
+
+        stage("Trigger Build") {
+            when {
+                expression { params.deploy }
+            }
+            steps {
+                script {
+                    build job: "catalogue-cd",
+                        parameters: [
+                            string(name: "appVersion", value: "${appVersion}"),
+                            string(name: "deploy_to", value: "dev")
+                        ],
+                        propagate: false,
+                        wait: false
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "hello from always"
+            deleteDir()
+        }
+        success {
+            echo "hello from success"
+        }
+        failure {
+            echo "hello from failure"
+        }
+    }
+}
